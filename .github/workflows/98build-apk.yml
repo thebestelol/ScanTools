@@ -1,0 +1,54 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - principal
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Find Flutter project
+        run: |
+          PROJECT_DIR=$(dirname "$(find . -name pubspec.yaml -print -quit)")
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Aucun pubspec.yaml trouvé. Le projet Flutter complet n'est pas sur GitHub."
+            exit 1
+          fi
+          echo "Projet Flutter trouvé dans: $PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Get dependencies
+        run: |
+          cd "$PROJECT_DIR"
+          flutter pub get
+
+      - name: Build APK
+        run: |
+          cd "$PROJECT_DIR"
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScanTools-app-release
+          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
